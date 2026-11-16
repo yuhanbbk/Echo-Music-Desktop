@@ -34,25 +34,25 @@ jobs:
         with:
           channel: stable
           cache: true
-          # If the build complains about the Dart/Flutter version,
-          # uncomment and set a version that matches pubspec.yaml:
-          # flutter-version: 3.x.x
 
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
 
-      - name: Get dependencies
-        working-directory: ${{ steps.find.outputs.dir }}
-        run: flutter pub get
-
-      - name: Ensure asset folders exist
+      - name: Fix missing asset folders
         working-directory: ${{ steps.find.outputs.dir }}
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path assets/images | Out-Null
-          New-Item -ItemType Directory -Force -Path icons | Out-Null
-          Write-Host "assets contents:"
-          Get-ChildItem assets -Recurse | Select-Object -First 30 -ExpandProperty FullName
+          # Remove the assets/images/ entry from pubspec.yaml
+          $lines = Get-Content pubspec.yaml | Where-Object { $_ -notmatch 'assets/images' }
+          Set-Content -Path pubspec.yaml -Value $lines
+          Write-Host "Assets section now:"
+          Select-String -Path pubspec.yaml -Pattern 'assets:' -Context 0,4
+          Write-Host "Folders present:"
+          Get-ChildItem -Directory | Select-Object -ExpandProperty Name
+
+      - name: Get dependencies
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: flutter pub get
 
       - name: Build Windows release
         working-directory: ${{ steps.find.outputs.dir }}
@@ -69,3 +69,4 @@ jobs:
         with:
           name: EchoMusic-Windows
           path: EchoMusic-Windows.zip
+          
