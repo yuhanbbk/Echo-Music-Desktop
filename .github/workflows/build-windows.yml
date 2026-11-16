@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout
@@ -42,11 +42,8 @@ jobs:
         working-directory: ${{ steps.find.outputs.dir }}
         shell: pwsh
         run: |
-          # Remove the assets/images/ entry from pubspec.yaml
           $lines = Get-Content pubspec.yaml | Where-Object { $_ -notmatch 'assets/images' }
           Set-Content -Path pubspec.yaml -Value $lines
-          Write-Host "Assets section now:"
-          Select-String -Path pubspec.yaml -Pattern 'assets:' -Context 0,4
           Write-Host "Folders present:"
           Get-ChildItem -Directory | Select-Object -ExpandProperty Name
 
@@ -56,6 +53,8 @@ jobs:
 
       - name: Build Windows release
         working-directory: ${{ steps.find.outputs.dir }}
+        env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
         run: flutter build windows --release
 
       - name: Zip build
@@ -69,4 +68,3 @@ jobs:
         with:
           name: EchoMusic-Windows
           path: EchoMusic-Windows.zip
-          
