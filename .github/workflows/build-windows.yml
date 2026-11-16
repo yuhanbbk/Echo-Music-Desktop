@@ -1,0 +1,62 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find Flutter project
+        id: find
+        shell: pwsh
+        run: |
+          Write-Host "Top-level files:"
+          Get-ChildItem -Force | Select-Object -ExpandProperty Name
+          $file = Get-ChildItem -Recurse -Filter pubspec.yaml |
+            Where-Object { $_.FullName -notmatch '\\(\.dart_tool|build)\\' } |
+            Sort-Object { $_.FullName.Length } |
+            Select-Object -First 1
+          if (-not $file) {
+            Write-Error "pubspec.yaml not found anywhere in the repo"
+            exit 1
+          }
+          $dir = $file.DirectoryName
+          Write-Host "Project dir: $dir"
+          "dir=$dir" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          # If the build complains about the Dart/Flutter version,
+          # uncomment and set a version that matches pubspec.yaml:
+          # flutter-version: 3.x.x
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Get dependencies
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: flutter pub get
+
+      - name: Build Windows release
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: flutter build windows --release
+
+      - name: Zip build
+        working-directory: ${{ steps.find.outputs.dir }}
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "$env:GITHUB_WORKSPACE\EchoMusic-Windows.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EchoMusic-Windows
+          path: EchoMusic-Windows.zip
