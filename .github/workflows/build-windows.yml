@@ -45,6 +45,15 @@ jobs:
         working-directory: ${{ steps.find.outputs.dir }}
         run: flutter pub get
 
+      - name: Ensure asset folders exist
+        working-directory: ${{ steps.find.outputs.dir }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path assets/images | Out-Null
+          New-Item -ItemType Directory -Force -Path icons | Out-Null
+          Write-Host "assets contents:"
+          Get-ChildItem assets -Recurse | Select-Object -First 30 -ExpandProperty FullName
+
       - name: Build Windows release
         working-directory: ${{ steps.find.outputs.dir }}
         run: flutter build windows --release
